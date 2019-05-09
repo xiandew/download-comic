@@ -23,26 +23,52 @@ include_once("dl.php");
 set_time_limit(0);
 ini_set('max_execution_time', '0');
 
+/*----------------------------------------------------------------------------*/
+
+$download_root_dir = "./downloads"
+
+$host = "http://www.acg456.com";
+$comic_list_route = "/Catalog/default.aspx?PageIndex=1";
+
+$comic_list_pattern =
+'/\"Conjunction\">\s*<a.href=\"(.*?)\".target=\"_blank/';
+
+$info_pattern =
+'/class=\"comic_cover\"><img.src=\"(.*?)".*?alt=\"(.*?)\"\/>[\s\S]*?<ul'.
+'.class=\"Height_px22\">\s*<li>漫画类型：<a.*?>(.*?)<\/a>.*?\s*.*?作　　'.
+'者：<a.*?>(.*?)<\/a>[\s\S]*?故事简介：([\s\S]*?)<\/li/';
+
+$info_format =
+"Cover: %s\nName: %s\nCategory: %s\nAuthor: %s\nIntro: %s\n";
+
+$info_filename = "info.txt"
+
+
+/*----------------------------------------------------------------------------*/
+
 /**
- * take content of a single comic page and save information to <comic_name>/info.txt.
- * Return commic's name.
+ * take content of a single comic page and save information to
+ * <comic_name>/info.txt. Return commic's download directory
+ * (eg. "<download_root_dir>/<comic_name>")
  */
 function get_info($page_content){
-	$pattern_info =
-	'/class=\"comic_cover\"><img.src=\"(.*?)".*?alt=\"(.*?)\"\/>[\s\S]*?<ul'.
-	'.class=\"Height_px22\">\s*<li>漫画类型：<a.*?>(.*?)<\/a>.*?\s*.*?作　　'.
-	'者：<a.*?>(.*?)<\/a>[\s\S]*?故事简介：([\s\S]*?)<\/li/';
 
-	preg_match($pattern_info, $page_content, $info);
+	preg_match($GLOBALS['info_pattern'], $page_content, $info);
 	array_splice($info, 0, 1);
-	$name = $info[1];
-	$content =
-		sprintf("Cover: %s\nName: %s\nCategory: %s\nAuthor: %s\nIntro: %s\n",
-				$info[0], $name, $info[2], $info[3], $info[4]);
-	save_file("./".$name."/info.txt", $content);
-	echo "Information saved to ".$name."/info.txt";
 
-	return $name;
+	list($cover, $name, $category, $author, $intro) = $info;
+
+	$content =
+		sprintf($GLOBALS['info_format'], $cover, $name, $category, $author, $intro);
+
+	$download_comic_dir = $GLOBALS['download_root_dir']."/".$name;
+
+	$info_filepath = $download_comic_dir."/".$GLOBALS['info_filename'];
+
+	save_file($info_filepath, $content);
+	echo "Comic information saved to ".$info_filepath."<br>";
+
+	return $download_comic_dir;
 }
 
 function get_chapters($page_content){
@@ -62,15 +88,19 @@ function get_chapters($page_content){
 }
 
 /**
- * download pictures for a chapter
+ * The previous version of the website (ex. 2017-11) stores all picture urls
+ * in a .js file. Picture urls can be easily got by parsing the js file.
+ *
+ * However, the current version of the website using AJAX to request picture
+ * urls from back-end and store it in a variable and loaded pictures
+ * asynchronously.
  */
 function dl_chapter_pictures($chapter_url, $save_to) {
 	make_dir($save_to);
 
 	$page_content = fetch_contents($chapter_url);
 
-	preg_match($pcjs_pat, $page_content, $pics_js);
-	print_r($pics_js);
+	print($page_content);
 	exit(0);
 
 	$pics_js = fetch_contents($pics_js[1]);
@@ -86,21 +116,18 @@ function dl_chapter_pictures($chapter_url, $save_to) {
 }
 
 function main() {
-	$host = "http://www.acg456.com";
-	$route_comic_list = "/Catalog/default.aspx?PageIndex=1";
-
-	$page_comic_list = fetch_contents($host.$route_comic_list);
-	$pattern_comic = '/\"Conjunction\">\s*<a.href=\"(.*?)\".target=\"_blank/';
-	preg_match_all($pattern_comic, $page_comic_list, $results);
+	$comic_list_content = fetch_contents($GLOBALS['host'].$GLOBALS['comic_list_route']);
+	preg_match_all($GLOBALS['comic_list_pattern'], $comic_list_content, $comic_list);
 
 	// get information about a comic by processing contents fetched from its url.
-	foreach($results[1] as $route_comic){
-		$page_content = fetch_contents($host.$route_comic);
-		$comic_name = get_info($page_content);
+	foreach($comic_list[1] as $comic_route){
+		$page_content = fetch_contents($GLOBALS['host'].$comic_route);
+		$download_comic_dir = get_info($page_content);
 		$chapters = get_chapters($page_content);
 
 		foreach ($chapters as $chapter_name => $chapter_route) {
-			dl_chapter_pictures($host.$chapter_route, "./".$comic_name."/".$chapter_name);
+			dl_chapter_pictures($GLOBALS['host'].$chapter_route,
+										$download_comic_dir.$chapter_name);
 		}
 
 		return;
