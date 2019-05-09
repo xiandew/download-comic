@@ -15,7 +15,7 @@
  *
  * To run this program, be sure that the server and PHP are configured
  * properly and then simply try to reach this file from any browser through
- * localhost (eg. http://localhost/dl_comic.php).
+ * localhost (eg. http://localhost/download-comics/index.php).
  */
 include_once("file.php");
 include_once("download.php");
