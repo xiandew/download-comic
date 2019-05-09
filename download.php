@@ -20,6 +20,7 @@ function fetch_contents($furl){
 
 	return curl_exec($ch);
 }
+
 function download_remote_file($file_url, $save_to, $imgname){
 	make_dir($save_to);
 	if(file_exists($save_to.'/'.$imgname)){
