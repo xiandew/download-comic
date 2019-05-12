@@ -2,6 +2,7 @@
 /**
  * Created by Xiande Wen, November 2017
  * Last modified: 10:25, 2019-05-09
+ * This code is presented "as is" without any guarantees.
  */
 include_once("file.php");
 include_once("download.php");
